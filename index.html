@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Me NOW - Authentication</title>
+
+  <!-- Bootstrap 5.3 CSS -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
+    rel="stylesheet" 
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" 
+    crossorigin="anonymous"
+  >
+  <!-- Bootstrap Icons -->
+  <link 
+    rel="stylesheet" 
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  >
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-body-tertiary min-vh-100 d-flex align-items-center justify-content-center py-5">
+
+  <div class="container">
+    <div class="row align-items-center g-5">
+
+      <!-- Authentication Card Column -->
+      <div class="col-12 col-lg-6">
+        <div class="card bg-body text-body shadow-lg rounded-3 min-card-height p-3 p-sm-4">
+          <div class="card-body d-flex flex-column justify-content-between">
+            
+            <div>
+              <!-- Top Navigation Tabs (Log In / Sign Up) -->
+              <ul class="nav nav-tabs nav-fill mb-4" id="authTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button 
+                    class="nav-item nav-link active fw-bold fs-5 py-2" 
+                    id="login-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#login-pane" 
+                    type="button" 
+                    role="tab" 
+                    aria-controls="login-pane" 
+                    aria-selected="true">
+                    Log In
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button 
+                    class="nav-item nav-link fw-bold fs-5 py-2" 
+                    id="signup-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#signup-pane" 
+                    type="button" 
+                    role="tab" 
+                    aria-controls="signup-pane" 
+                    aria-selected="false">
+                    Sign Up
+                  </button>
+                </li>
+              </ul>
+
+              <!-- Tab Contents -->
+              <div class="tab-content" id="authTabsContent">
+                
+                <!-- LOG IN PANE -->
+                <div class="tab-pane fade show active" id="login-pane" role="tabpanel" aria-labelledby="login-tab" tabindex="0">
+                  <form onsubmit="doLogin(event);" class="d-flex flex-column gap-3">
+                    <div>
+                      <label for="loginName" class="form-label text-body-secondary fw-medium mb-1">Username</label>
+                      <input 
+                        type="text" 
+                        class="form-control form-control-lg bg-body-tertiary border-secondary-subtle" 
+                        id="loginName" 
+                        placeholder="Username"
+                        required
+                      >
+                    </div>
+
+                    <div>
+                      <label for="loginPassword" class="form-label text-body-secondary fw-medium mb-1">Password</label>
+                      <input 
+                        type="password" 
+                        class="form-control form-control-lg bg-body-tertiary border-secondary-subtle" 
+                        id="loginPassword" 
+                        placeholder="Password"
+                        required
+                      >
+                    </div>
+
+                    <button type="submit" class="btn btn-secondary btn-lg fs-3 fw-bold py-3 mt-2">
+                      Sign In
+                    </button>
+
+                    <!-- Feedback Alert Span -->
+                    <div id="loginResult" class="mt-1 small text-danger fw-semibold"></div>
+
+                    <div class="mt-1">
+                      <a href="#" class="text-body-secondary text-decoration-underline fs-6">
+                        Forgot password?
+                      </a>
+                    </div>
+                  </form>
+                </div>
+
+                <!-- SIGN UP PANE -->
+                <div class="tab-pane fade" id="signup-pane" role="tabpanel" aria-labelledby="signup-tab" tabindex="0">
+                  <form onsubmit="doRegister(event);" class="d-flex flex-column gap-3">
+                    <div class="row g-2">
+                      <div class="col-6">
+                        <label for="regFirstName" class="form-label text-body-secondary fw-medium mb-1">First Name</label>
+                        <input 
+                          type="text" 
+                          class="form-control bg-body-tertiary border-secondary-subtle" 
+                          id="regFirstName" 
+                          placeholder="John"
+                          required
+                        >
+                      </div>
+                      <div class="col-6">
+                        <label for="regLastName" class="form-label text-body-secondary fw-medium mb-1">Last Name</label>
+                        <input 
+                          type="text" 
+                          class="form-control bg-body-tertiary border-secondary-subtle" 
+                          id="regLastName" 
+                          placeholder="Doe"
+                          required
+                        >
+                      </div>
+                    </div>
+
+                    <div>
+                      <label for="regUsername" class="form-label text-body-secondary fw-medium mb-1">Username</label>
+                      <input 
+                        type="text" 
+                        class="form-control bg-body-tertiary border-secondary-subtle" 
+                        id="regUsername" 
+                        placeholder="Choose a username"
+                        required
+                      >
+                    </div>
+
+                    <div>
+                      <label for="regPassword" class="form-label text-body-secondary fw-medium mb-1">Password</label>
+                      <input 
+                        type="password" 
+                        class="form-control bg-body-tertiary border-secondary-subtle" 
+                        id="regPassword" 
+                        placeholder="Create a password"
+                        required
+                      >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg fs-4 fw-bold py-3 mt-2">
+                      Register
+                    </button>
+
+                    <!-- Feedback Alert Span -->
+                    <div id="registerResult" class="mt-1 small fw-semibold"></div>
+                  </form>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Bottom User / Admin Toggle Switch -->
+            <div class="d-flex justify-content-center align-items-center pt-4 border-top border-secondary-subtle mt-4">
+              <div class="form-check form-switch fs-6 mb-0">
+                <input 
+                  class="form-check-input role-toggle-switch" 
+                  type="checkbox" 
+                  role="switch" 
+                  id="roleToggle"
+                  aria-label="Toggle user or admin mode"
+                >
+                <label class="form-check-label fw-semibold text-secondary ms-2" for="roleToggle" id="roleLabel">
+                  User Mode
+                </label>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero Banner Column -->
+      <div class="col-12 col-lg-6">
+        <div class="text-start">
+          <h1 class="display-3 fw-extrabold text-body tracking-tight mb-2">
+            Contact Me NOW
+          </h1>
+          <p class="fs-4 text-body-secondary mb-0">
+            Start fiddling with contacts today
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Custom JavaScript file -->
+  <script src="js/code.js"></script>
+
+  <!-- Bootstrap 5.3 JS Bundle -->
+  <script 
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" 
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" 
+    crossorigin="anonymous">
+  </script>
+</body>
+</html>
+

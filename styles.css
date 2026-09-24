@@ -1,0 +1,31 @@
+/* Custom utility overrides */
+
+.fw-extrabold {
+  font-weight: 800;
+}
+
+/* Enforce the visual layout height of the white/dark login card */
+.min-card-height {
+  min-height: 520px;
+}
+
+/* Custom styling for the switch toggle */
+.role-toggle-switch {
+  cursor: pointer;
+  width: 2.75em !important;
+  height: 1.4em !important;
+}
+
+.role-toggle-switch:checked {
+  background-color: var(--bs-warning);
+  border-color: var(--bs-warning);
+}
+
+/* Smooth transitions for interactive elements */
+.btn-secondary {
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-secondary:active {
+  transform: scale(0.99);
+}
