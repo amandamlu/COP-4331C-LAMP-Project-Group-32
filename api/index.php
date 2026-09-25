@@ -100,3 +100,13 @@ if ($method === 'POST' && $action ==='register'){
         'error'   => ''
     ]);    
 }
+
+if ($method === 'GET' && $action === 'getall'){
+    $id = clean($body['id']);
+
+    $stmt = $db->prepare(
+        "SELECT `FIrst Name`, `Last Name`, `E-mail Address`, `Phone Number`
+         FROM Contacts
+         WHERE  "
+    )
+}
