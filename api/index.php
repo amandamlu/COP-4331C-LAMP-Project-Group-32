@@ -20,25 +20,23 @@ setCORSHeaders();
 $method = $_SERVER['REQUEST_METHOD'];
 $action= $_GET['action'] ?? '';
 $db     = getDB();
-$body = getRequestBody(); //asks like "let me read everything" 
+$body = getRequestBody();
 
-// 1. Unauthenticated Health Check (Ping)
 if ($method === 'GET' && (isset($_GET['ping']) || (isset($_GET['action']) && $_GET['action'] === 'ping'))) {
     respond(200, ['status' => 'OK', 'timestamp' => time()]);
 }
 
-// 2. Unauthenticated Login (POST with login & password in body)
 if ($method === 'POST' && $action === 'login') {
-    if (isset($body['username']) && isset($body['password'])) { //"ah, so youre talking about login" 
-        $username    = clean($body['username']); //"let me parse this up with a helpers.php function so i can use this"
+    if (isset($body['username']) && isset($body['password'])) {
+        $username = clean($body['username']);
         $password = clean($body['password']);
 
-        if (!$username || !$password) { //"hark! the password is empty, ipso facto you shall not pass" 
+        if (!$username || !$password) {
             respond(400, ['error' => 'Login and password are required']);
         }
         
         $stmt = $db->prepare(
-            "SELECT ID, `First Name`, `Last Name`, Password
+            "SELECT ID, `First Name`, `Last Name`, `Password`, `Enabled`, `Admin`, 
             FROM Users
             WHERE Username = :username
             LIMIT 1"
@@ -55,6 +53,8 @@ if ($method === 'POST' && $action === 'login') {
                 'firstName' => $user['First Name'],
                 'lastName'  => $user['Last Name'],
                 'token'     => (string) $user['ID'],
+                'enabled'   => (bool) $user['Enabled'],
+                'admin'     => (bool) $user['Admin'],
                 'error'     => ''
             ]);
         } else {
@@ -78,17 +78,14 @@ if ($method === 'POST' && $action ==='register'){
         respond(400, ['error'=> 'First name, last name, username, and password are required']);
     }
 
-    //check our database to see if the user already exists
     $temp = $db->prepare('SELECT ID FROM Users WHERE Username = :username LIMIT 1');
-    //executes the database search stored in temp where :username because the actual username
-    //then give back whats at the row if found with that username, stored in $user
+
     $temp->execute([':username' => $username]); $user = $temp->fetch();
 
     if($user){
         respond(401, ['error' => 'Username is taken. Please write a UNIQUE username this time >:)']);
     }
-   
-    //password extra hashed extra salted side order of a chocolate shake  
+    
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
     $temp = $db->prepare("INSERT INTO Users (`First Name`, `Last Name`, Username, Password) VALUES (:firstName, :lastName,:username, :password)");
@@ -102,132 +99,172 @@ if ($method === 'POST' && $action ==='register'){
 }
 
 if ($method === 'GET' && $action === 'getall'){
+    $enabled = clean($body['enabled']);
     $userid = clean($body['userid']);
 
-    $stmt = $db->prepare(
-        "SELECT `First Name`, `Last Name`, `E-mail Address`, `Phone Number`
-         FROM Contacts
-         WHERE `User ID` = :userid"
-    );
+    if (!$enabled) {
+        respond(403, [
+            'message' => 'This action is not available',
+            'error' => ''
+        ]);
+    } else {
+        $stmt = $db->prepare(
+            "SELECT `ID`, `First Name`, `Last Name`, `E-mail Address`, `Phone Number`
+            FROM Contacts
+            WHERE `User ID` = :userid"
+        );
 
-    $stmt->execute([
-        ':userid' => $userid
-    ]);
+        $stmt->execute([
+            ':userid' => $userid
+        ]);
 
-    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    respond(200, [
-        'message' => 'All Contacts fetched!',
-        'contacts' => $results,
-        'error' => ''
-    ]);
+        respond(200, [
+            'message' => 'All Contacts fetched!',
+            'contacts' => $results,
+            'error' => ''
+        ]);
+    }
 }
 
 if ($method === 'GET' && $action === 'getpartial'){
+    $enabled = clean($body['enabled']);
     $userid = clean($body['userid']);
     $firstName = clean($body['firstName']);
     $lastName = clean($body['lastName']);
 
-    $stmt = $db->prepare(
-        "SELECT `First Name`, `Last Name`, `E-mail Address`, `Phone Number`
-         FROM Contacts
-         WHERE `User ID` = :userid
-         AND `First Name` = :firstName
-         AND `Last Name` = :lastName"
-    );
+    if (!$enabled) {
+        respond(403, [
+            'message' => 'This action is not available',
+            'error' => ''
+        ]);
+    } else {
+        $stmt = $db->prepare(
+            "SELECT `ID`, `First Name`, `Last Name`, `E-mail Address`, `Phone Number`
+            FROM Contacts
+            WHERE `User ID` = :userid
+            AND `First Name` = :firstName
+            AND `Last Name` = :lastName"
+        );
 
-    $stmt->execute([
-        ':userid' => $userid,
-        ':firstName' => $firstName,
-        ':lastName' => $lastName
-    ]);
+        $stmt->execute([
+            ':userid' => $userid,
+            ':firstName' => $firstName,
+            ':lastName' => $lastName
+        ]);
 
-    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    respond(200, [
-        'message' => 'Some Contacts fetched!',
-        'contacts' => $results,
-        'error' => ''
-    ]);
+        respond(200, [
+            'message' => 'Some Contacts fetched!',
+            'contacts' => $results,
+            'error' => ''
+        ]);
+    }
 }
 
 if ($method === 'POST' && $action === 'add'){
+    $enabled = clean($body['enabled']);
     $userid = clean($body['userid']);
     $firstName = clean($body['firstName']);
     $lastName = clean($body['lastName']);
     $emailAddress = clean($body['emailAddress']);
     $phoneNumber = clean($body['phoneNumber']); 
 
-    if (!$firstName || !$lastName || !$emailAddress || !$phoneNumber) {
-        respond(400, ['error'=> 'Some fields are not filled in']);
+    if (!$enabled) {
+        respond(403, [
+            'message' => 'This action is not available',
+            'error' => ''
+        ]);
+    } else {
+        if (!$firstName || !$lastName || !$emailAddress || !$phoneNumber) {
+            respond(400, ['error'=> 'Some fields are not filled in']);
+        }
+
+        $stmt = $db->prepare(
+            "INSERT INTO 
+            Contacts (`First Name`, `Last Name`, `E-mail Address`, `Phone Number`, `User ID`)
+            VALUES (:firstName, :lastName, :emailAddress, :phoneNumber, :userid)"
+        );
+
+        $stmt->execute([
+            ':userid' => $userid,
+            ':firstName' => $firstName,
+            ':lastName' => $lastName,
+            ':emailAddress' => $emailAddress,
+            ':phoneNumber' => $phoneNumber
+        ]);
+
+        respond(201, [
+            'message' => 'Contact added',
+            'error' =>  ''
+        ]);
     }
-
-    $stmt = $db->prepare(
-        "INSERT INTO 
-         Contacts (`First Name`, `Last Name`, `E-mail Address`, `Phone Number`, `User ID`)
-         VALUES (:firstName, :lastName, :emailAddress, :phoneNumber, :userid)"
-    );
-
-    $stmt->execute([
-        ':userid' => $userid,
-        ':firstName' => $firstName,
-        ':lastName' => $lastName,
-        ':emailAddress' => $emailAddress,
-        ':phoneNumber' => $phoneNumber
-    ]);
-
-    respond(201, [
-        'message' => 'Contact added',
-        'error' =>  ''
-    ]);
 }
 
 if ($method === 'DELETE'){
+    $enabled = clean($body['enabled']);
     $id = clean($body['id']);
     $userid = clean($body['userid']);
 
-    $stmt = $db->prepare(
-        "DELETE FROM Contacts
-         WHERE `ID` = :id
-         AND `User ID` = :userid"
-    );
+    if (!$enabled) {
+        respond(403, [
+            'message' => 'This action is not available',
+            'error' => ''
+        ]);
+    } else {
+        $stmt = $db->prepare(
+            "DELETE FROM Contacts
+            WHERE `ID` = :id
+            AND `User ID` = :userid"
+        );
 
-    $stmt->execute([
-        ':id' => $id,
-        ':userid' => $userid
-    ]);
+        $stmt->execute([
+            ':id' => $id,
+            ':userid' => $userid
+        ]);
 
-    respond(204, [
-        'error' =>  ''
-    ]);
+        respond(204, [
+            'error' =>  ''
+        ]);
+    }
 }
 
 if ($method === 'PATCH'){
+    $enabled = clean($body['enabled']);
     $id = clean($body['id']);
     $firstName = clean($body['firstName']);
     $lastName = clean($body['lastName']);
     $emailAddress = clean($body['emailAddress']);
     $phoneNumber = clean($body['phoneNumber']); 
 
-    $stmt = $db->prepare(
-        "UPDATE Contacts
-         SET
-            `First Name` = COALESCE(:firstName, `First Name`),
-            `Last Name` = COALESCE(:lastName, `Last Name`),
-            `E-mail Address` = COALESCE(:emailAddress, `E-mail Address`),
-            `Phone Number` = COALESCE(:phoneNumber, `Phone Number`),
-         WHERE id = :id"
-    );
+    if (!$enabled) {
+        respond(403, [
+            'message' => 'This action is not available',
+            'error' => ''
+        ]);
+    } else {
+        $stmt = $db->prepare(
+            "UPDATE Contacts
+            SET
+                `First Name` = COALESCE(:firstName, `First Name`),
+                `Last Name` = COALESCE(:lastName, `Last Name`),
+                `E-mail Address` = COALESCE(:emailAddress, `E-mail Address`),
+                `Phone Number` = COALESCE(:phoneNumber, `Phone Number`),
+            WHERE id = :id"
+        );
 
-    $stmt->execute([
-        ':firstName' => $firstName,
-        ':lastName' => $lastName,
-        ':emailAddress' => $emailAddress,
-        ':phoneNumber' => $phoneNumber
-    ]);
+        $stmt->execute([
+            ':firstName' => $firstName,
+            ':lastName' => $lastName,
+            ':emailAddress' => $emailAddress,
+            ':phoneNumber' => $phoneNumber
+        ]);
 
-    respond(200, [
-        'message' => 'Contact updated',
-        'error' =>  ''
-    ]);
+        respond(200, [
+            'message' => 'Contact updated',
+            'error' =>  ''
+        ]);
+    }
 }
