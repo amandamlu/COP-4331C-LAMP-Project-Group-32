@@ -102,11 +102,132 @@ if ($method === 'POST' && $action ==='register'){
 }
 
 if ($method === 'GET' && $action === 'getall'){
-    $id = clean($body['id']);
+    $userid = clean($body['userid']);
 
     $stmt = $db->prepare(
-        "SELECT `FIrst Name`, `Last Name`, `E-mail Address`, `Phone Number`
+        "SELECT `First Name`, `Last Name`, `E-mail Address`, `Phone Number`
          FROM Contacts
-         WHERE  "
-    )
+         WHERE `User ID` = :userid"
+    );
+
+    $stmt->execute([
+        ':userid' => $userid
+    ]);
+
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    respond(200, [
+        'message' => 'All Contacts fetched!',
+        'contacts' => $results,
+        'error' => ''
+    ]);
+}
+
+if ($method === 'GET' && $action === 'getpartial'){
+    $userid = clean($body['userid']);
+    $firstName = clean($body['firstName']);
+    $lastName = clean($body['lastName']);
+
+    $stmt = $db->prepare(
+        "SELECT `First Name`, `Last Name`, `E-mail Address`, `Phone Number`
+         FROM Contacts
+         WHERE `User ID` = :userid
+         AND `First Name` = :firstName
+         AND `Last Name` = :lastName"
+    );
+
+    $stmt->execute([
+        ':userid' => $userid,
+        ':firstName' => $firstName,
+        ':lastName' => $lastName
+    ]);
+
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    respond(200, [
+        'message' => 'Some Contacts fetched!',
+        'contacts' => $results,
+        'error' => ''
+    ]);
+}
+
+if ($method === 'POST' && $action === 'add'){
+    $userid = clean($body['userid']);
+    $firstName = clean($body['firstName']);
+    $lastName = clean($body['lastName']);
+    $emailAddress = clean($body['emailAddress']);
+    $phoneNumber = clean($body['phoneNumber']); 
+
+    if (!$firstName || !$lastName || !$emailAddress || !$phoneNumber) {
+        respond(400, ['error'=> 'Some fields are not filled in']);
+    }
+
+    $stmt = $db->prepare(
+        "INSERT INTO 
+         Contacts (`First Name`, `Last Name`, `E-mail Address`, `Phone Number`, `User ID`)
+         VALUES (:firstName, :lastName, :emailAddress, :phoneNumber, :userid)"
+    );
+
+    $stmt->execute([
+        ':userid' => $userid,
+        ':firstName' => $firstName,
+        ':lastName' => $lastName,
+        ':emailAddress' => $emailAddress,
+        ':phoneNumber' => $phoneNumber
+    ]);
+
+    respond(201, [
+        'message' => 'Contact added',
+        'error' =>  ''
+    ]);
+}
+
+if ($method === 'DELETE'){
+    $id = clean($body['id']);
+    $userid = clean($body['userid']);
+
+    $stmt = $db->prepare(
+        "DELETE FROM Contacts
+         WHERE `ID` = :id
+         AND `User ID` = :userid"
+    );
+
+    $stmt->execute([
+        ':id' => $id,
+        ':userid' => $userid
+    ]);
+
+    respond(204, [
+        'error' =>  ''
+    ]);
+}
+
+if ($method === 'PATCH'){
+    $id = clean($body['id']);
+    $firstName = clean($body['firstName']);
+    $lastName = clean($body['lastName']);
+    $emailAddress = clean($body['emailAddress']);
+    $phoneNumber = clean($body['phoneNumber']); 
+
+    $stmt = $db->prepare(
+        "UPDATE Contacts
+         SET
+            `First Name` = COALESCE(:firstName, `First Name`),
+            `Last Name` = COALESCE(:lastName, `Last Name`),
+            `E-mail Address` = COALESCE(:emailAddress, `E-mail Address`),
+            `Phone Number` = COALESCE(:phoneNumber, `Phone Number`),
+         WHERE id = :id"
+    );
+
+    $stmt->execute([
+        ':firstName' => $firstName,
+        ':lastName' => $lastName,
+        ':emailAddress' => $emailAddress,
+        ':phoneNumber' => $phoneNumber
+    ]);
+
+    respond(200, [
+        'message' => 'Contact updated',
+        'error' =>  ''
+    ]);
 }
