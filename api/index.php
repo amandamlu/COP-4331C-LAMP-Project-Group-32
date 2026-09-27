@@ -19,7 +19,7 @@ setCORSHeaders();
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action= $_GET['action'] ?? '';
-$db     = getDB();
+$db   = getDB();
 $body = getRequestBody();
 
 if ($method === 'GET' && (isset($_GET['ping']) || (isset($_GET['action']) && $_GET['action'] === 'ping'))) {
@@ -99,10 +99,10 @@ if ($method === 'POST' && $action ==='register'){
 }
 
 if ($method === 'GET' && $action === 'getall'){
-    $enabled = clean($body['enabled']);
+    $accstatus = clean($body['accstatus']);
     $userid = clean($body['userid']);
 
-    if (!$enabled) {
+    if ($accstatus !== 'Active') {
         respond(403, [
             'message' => 'This action is not available',
             'error' => ''
@@ -129,12 +129,12 @@ if ($method === 'GET' && $action === 'getall'){
 }
 
 if ($method === 'GET' && $action === 'getpartial'){
-    $enabled = clean($body['enabled']);
+    $accstatus = clean($body['accstatus']);
     $userid = clean($body['userid']);
     $firstName = clean($body['firstName']);
     $lastName = clean($body['lastName']);
 
-    if (!$enabled) {
+    if ($accstatus !== 'Active') {
         respond(403, [
             'message' => 'This action is not available',
             'error' => ''
@@ -165,21 +165,21 @@ if ($method === 'GET' && $action === 'getpartial'){
 }
 
 if ($method === 'POST' && $action === 'add'){
-    $enabled = clean($body['enabled']);
+    $accstatus = clean($body['accstatus']);
     $userid = clean($body['userid']);
     $firstName = clean($body['firstName']);
     $lastName = clean($body['lastName']);
     $emailAddress = clean($body['emailAddress']);
     $phoneNumber = clean($body['phoneNumber']); 
 
-    if (!$enabled) {
+    if ($accstatus !== 'Active') {
         respond(403, [
             'message' => 'This action is not available',
             'error' => ''
         ]);
     } else {
         if (!$firstName || !$lastName || !$emailAddress || !$phoneNumber) {
-            respond(400, ['error'=> 'Some fields are not filled in']);
+            respond(400, ['error' => 'Some fields are not filled in']);
         }
 
         $stmt = $db->prepare(
@@ -204,11 +204,11 @@ if ($method === 'POST' && $action === 'add'){
 }
 
 if ($method === 'DELETE'){
-    $enabled = clean($body['enabled']);
+    $accstatus = clean($body['accstatus']);
     $id = clean($body['id']);
     $userid = clean($body['userid']);
 
-    if (!$enabled) {
+    if ($accstatus !== 'Active') {
         respond(403, [
             'message' => 'This action is not available',
             'error' => ''
@@ -232,14 +232,14 @@ if ($method === 'DELETE'){
 }
 
 if ($method === 'PATCH'){
-    $enabled = clean($body['enabled']);
+    $accstatus = clean($body['accstatus']);
     $id = clean($body['id']);
     $firstName = clean($body['firstName']);
     $lastName = clean($body['lastName']);
     $emailAddress = clean($body['emailAddress']);
     $phoneNumber = clean($body['phoneNumber']); 
 
-    if (!$enabled) {
+    if ($accstatus !== 'Active') {
         respond(403, [
             'message' => 'This action is not available',
             'error' => ''
@@ -251,15 +251,16 @@ if ($method === 'PATCH'){
                 `First Name` = COALESCE(:firstName, `First Name`),
                 `Last Name` = COALESCE(:lastName, `Last Name`),
                 `E-mail Address` = COALESCE(:emailAddress, `E-mail Address`),
-                `Phone Number` = COALESCE(:phoneNumber, `Phone Number`),
-            WHERE id = :id"
+                `Phone Number` = COALESCE(:phoneNumber, `Phone Number`)
+            WHERE ID = :id"
         );
 
         $stmt->execute([
             ':firstName' => $firstName,
             ':lastName' => $lastName,
             ':emailAddress' => $emailAddress,
-            ':phoneNumber' => $phoneNumber
+            ':phoneNumber' => $phoneNumber,
+            ':id' => $id
         ]);
 
         respond(200, [
