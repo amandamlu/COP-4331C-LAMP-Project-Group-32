@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Org Chart Test</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #1e2124; color: white; padding: 20px; }
+        #chart_div { overflow-x: auto; margin-top: 20px; }
+        .google-visualization-orgchart-node { background-color: #2b2d31; border: 1px solid #00a8fc; color: white; border-radius: 5px; box-shadow: none; }
+    </style>
+</head>
+<body>
+    <h2>Organizational Chart Test</h2>
+    <div id="chart_div"></div>
+
+    <script>
+        google.charts.load('current', {packages:["orgchart"]});
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart() {
+            var data = new google.visualization.DataTable();
+            data.addColumn('string', 'Name');
+            data.addColumn('string', 'Manager');
+            data.addColumn('string', 'ToolTip');
+
+            // Send a POST request to your existing 'getorg' endpoint
+            fetch('https://contacts.tomasstep.com/api/index.php?action=getorg', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // Testing with the admin account we saw in your database screenshot
+                body: JSON.stringify({ username: 'root' }) 
+            })
+            .then(response => response.json())
+            .then(apiData => {
+                const chartRows = [];
+
+                // Loop through the 'users' array your PHP outputs
+                apiData.users.forEach(user => {
+                    const fullName = `${user['First Name']} ${user['Last Name']}`;
+                    chartRows.push([
+                        { 
+                            v: user.Username, 
+                            f: `<div style="font-weight:bold; font-size: 14px;">${fullName}</div><div style="color:#00a8fc; font-size:11px; margin-top: 5px;">${user.Role}</div>` 
+                        },
+                        user.Boss || '', 
+                        user['Acc Status']
+                    ]);
+                });
+
+                data.addRows(chartRows);
+                var chart = new google.visualization.OrgChart(document.getElementById('chart_div'));
+                chart.draw(data, {allowHtml:true});
+            })
+            .catch(error => console.error('Error fetching org data:', error));
+        }
+    </script>
+</body>
+</html>
