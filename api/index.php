@@ -589,14 +589,7 @@ if ($method === 'PATCH' && $action === 'assignboss') {
             'error' => 'Boss not found'
         ]);
     }
-
-    //check boss is really boss
-    if ($bossUser['Role'] !== 'Admin') {
-        respond(400, [
-            'error' => 'Boss is not a true boss. Disgrace.'
-        ]);
-    }
-
+    
     //set boss to user
     $stmt = $db->prepare('UPDATE Users SET Boss = :boss WHERE ID = :userid');
 
@@ -612,10 +605,11 @@ if ($method === 'PATCH' && $action === 'assignboss') {
 
 if ($method === 'POST' && $action === 'getpwdresetcode') {
     $username = clean($body['username']);
-    $code = rand_int(100000, 999999);
+    $code = random_int(100000, 999999);
+    $hashedCode = password_hash($code, PASSWORD_DEFAULT);
 
     $stmt = $db->prepare('UPDATE Users SET code = :code WHERE Username = :username');
-    $stmt->execute([':code' => $code, ':username' => $username]);
+    $stmt->execute([':code' => $hashedCode, ':username' => $username]);
 
     if ($stmt->rowCount() === 0) {
         respond(400, [
@@ -636,9 +630,10 @@ if ($method === 'POST' && $action === 'setnewpwd') {
     $newPassword = clean($body['newpassword']);
     $code = clean($body['code']);
 
-    $stmt = $db->prepare('SELECT Username FROM Users WHERE code = :code');
-    $stmt->execute([':code' => $code]);
-    
+    $stmt = $db->prepare('SELECT Username, code FROM Users WHERE Username = :username');
+    $stmt->execute([':username' => $username]);
+
+    $user = $stmt->fetch();
     if ($stmt->rowCount() === 0) {
         respond(400, [
             'message' => 'That user does not exist!',
@@ -646,18 +641,19 @@ if ($method === 'POST' && $action === 'setnewpwd') {
         ]);
     }
 
-    $user = $stmt->fetch();
-    if ($username !== $user['Username']) {
+    if (password_verify($code, $user['code'])) {
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $db->prepare('UPDATE Users SET Password = :hashedPassword, code = NULL WHERE Username = :username');
+        $stmt->execute([':hashedPassword' => $hashedPassword, ':username' => $username]);
+
+        respond(200, [
+            'message' => 'Password changed successfully!',
+            'error' => ''
+        ]);
+    } else {
         respond(400, [
             'message' => 'Wrong code!',
             'error' => ''
         ]);
     }
-    $stmt = $db->prepare('UPDATE Users SET Password = :newPassword, code = NULL WHERE Username = :username');
-    $stmt->execute([':newPassword' => $newPassword, ':username' => $username]);
-
-    respond(200, [
-        'message' => 'Password changed successfully!',
-        'error' => ''
-    ]);
 }
