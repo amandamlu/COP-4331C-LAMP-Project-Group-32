@@ -1,10 +1,10 @@
 // Base API endpoint URL
 const urlBase = (
-  typeof window !== 'undefined' && 
-  window.location && 
+  typeof window !== 'undefined' &&
+  window.location &&
   (
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' || 
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
     window.location.origin.includes('tomasstep')
   )
 )
@@ -45,10 +45,20 @@ async function doLogin(event) {
       userId = data.id;
       firstName = data.firstName || "";
       lastName = data.lastName || "";
-      saveCookie();
-      window.location.href = "contacts.html";
+
+      // Save role and status into session storage
+      sessionStorage.setItem("userId", data.id);
+      sessionStorage.setItem("firstName", firstName);
+      sessionStorage.setItem("lastName", lastName);
+      sessionStorage.setItem("username", username);
+      sessionStorage.setItem("role", data.role || "User");
+      sessionStorage.setItem("accStatus", data.accStatus || "Active");
+
+      saveCookie(data, username);
     } else if (res.status === 401) {
       show("Invalid username or password");
+    } else if (res.status === 403) {
+      show(data.error || "Account is disabled");
     } else {
       show(data.error || `Server error (HTTP ${res.status})`);
     }
@@ -132,20 +142,36 @@ function doRegister(event) {
 // Cookie & Session Handling
 // ==========================================
 
-function saveCookie() {
+function saveCookie(data, username) {
+  const role = data.role || "User";
+  const accStatus = data.accStatus || "Active";
+
   const minutes = 20;
   const date = new Date();
   date.setTime(date.getTime() + minutes * 60 * 1000);
-  
-  document.cookie = `userId=${userId}; expires=${date.toUTCString()}; path=/`;
-  document.cookie = `firstName=${encodeURIComponent(firstName)}; expires=${date.toUTCString()}; path=/`;
-  document.cookie = `lastName=${encodeURIComponent(lastName)}; expires=${date.toUTCString()}; path=/`;
+  const expires = date.toUTCString();
+
+  document.cookie = `userId=${userId}; expires=${expires}; path=/`;
+  document.cookie = `firstName=${encodeURIComponent(firstName)}; expires=${expires}; path=/`;
+  document.cookie = `lastName=${encodeURIComponent(lastName)}; expires=${expires}; path=/`;
+  document.cookie = `role=${encodeURIComponent(role)}; expires=${expires}; path=/`;
+  document.cookie = `accStatus=${encodeURIComponent(accStatus)}; expires=${expires}; path=/`;
+  document.cookie = `username=${encodeURIComponent(username || "")}; expires=${expires}; path=/`;
+
+  // Redirect based on role
+  if (role === "Admin") {
+    window.location.href = "admin_contacts.html";
+  } else {
+    window.location.href = "contacts.html";
+  }
 }
 
 function readCookie() {
   userId = -1;
   firstName = "";
   lastName = "";
+  let role = "User";
+  let accStatus = "Active";
 
   const cookies = document.cookie.split(";");
   for (let i = 0; i < cookies.length; i++) {
@@ -156,12 +182,22 @@ function readCookie() {
       firstName = decodeURIComponent(c.substring("firstName=".length));
     } else if (c.startsWith("lastName=")) {
       lastName = decodeURIComponent(c.substring("lastName=".length));
+    } else if (c.startsWith("role=")) {
+      role = decodeURIComponent(c.substring("role=".length));
+    } else if (c.startsWith("accStatus=")) {
+      accStatus = decodeURIComponent(c.substring("accStatus=".length));
     }
   }
 
   // Redirect to login if user is not logged in and not already on index.html
   if ((isNaN(userId) || userId <= 0) && !window.location.pathname.endsWith("index.html") && window.location.pathname !== "/") {
     window.location.href = "index.html";
+    return;
+  }
+
+  // Guard: a non-Admin landing on the admin page gets bounced to the regular dashboard
+  if (window.location.pathname.endsWith("admin_contacts.html") && role !== "Admin") {
+    window.location.href = "contacts.html";
   }
 }
 
@@ -169,12 +205,17 @@ function doLogout() {
   userId = 0;
   firstName = "";
   lastName = "";
-  
+
+  sessionStorage.clear();
+
   // Clear cookies by setting expiration in the past
   document.cookie = "userId=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
   document.cookie = "firstName=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
   document.cookie = "lastName=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-  
+  document.cookie = "role=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+  document.cookie = "accStatus=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+  document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+
   window.location.href = "index.html";
 }
 

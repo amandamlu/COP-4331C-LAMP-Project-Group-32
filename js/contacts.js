@@ -1,5 +1,23 @@
-// Base API endpoint URL
+document.addEventListener("DOMContentLoaded", () => {
+  const userId = sessionStorage.getItem("userId");
+  const role = sessionStorage.getItem("role");
 
+  // If not logged in, redirect to login page
+  if (!userId) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  // If logged in as Admin, send to Admin Dashboard
+  if (role === "Admin") {
+    window.location.href = "admin_contacts.html";
+    return;
+  }
+
+  // Otherwise, load regular user dashboard contacts...
+});
+
+// Base API endpoint URL
 const urlBase = 'https://contacts.tomasstep.com/api/index.php';
 
 // Session State Variables
@@ -36,6 +54,7 @@ function readCookie() {
   lastName = "";
   role = "User";
   accStatus = "Active";
+  currentUsername = "";
 
   const cookies = document.cookie.split(";");
   for (let i = 0; i < cookies.length; i++) {
@@ -50,6 +69,8 @@ function readCookie() {
       role = decodeURIComponent(c.substring("role=".length));
     } else if (c.startsWith("accStatus=")) {
       accStatus = decodeURIComponent(c.substring("accStatus=".length));
+    } else if (c.startsWith("username=")) {
+      currentUsername = decodeURIComponent(c.substring("username=".length));
     }
   }
 
@@ -94,6 +115,14 @@ function initDashboard() {
 
   // Fetch initial contacts list
   fetchContacts();
+
+  // if admin
+  if (role = "Admin") {
+    const adminPanel = document.getElementById("adminPanel");
+    if (adminPanel) 
+      adminPanel.classList.remove("d-none");
+    fetchAdminUsers();  
+  }
 }
 
 // ==========================================
