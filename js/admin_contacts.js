@@ -1,4 +1,14 @@
-const API_URL = '/api/index.php';
+const API_URL = (
+  typeof window !== 'undefined' &&
+  window.location &&
+  (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.origin.includes('tomasstep')
+  )
+)
+  ? '/api/index.php'
+  : 'https://contacts.tomasstep.com/api/index.php';
 let currentAdminUsername = sessionStorage.getItem('username') || '';
 let selectedTargetUser = '';
 let systemUsersList = [];
@@ -12,7 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   
-  document.getElementById('adminWelcome').innerText = `Welcome, Admin ${sessionStorage.getItem('firstName') || ''}`;
+  const welcomeHeading = document.getElementById('adminWelcome');
+  if (welcomeHeading) {
+    welcomeHeading.innerText = `Welcome, Admin ${sessionStorage.getItem('firstName') || ''}`;
+  }
+  
   loadUsers();
 });
 
@@ -20,16 +34,16 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadUsers() {
   try {
     const res = await fetch(`${API_URL}?action=getusers`, {
-      method: 'POST', // standard JSON payload handling based on API
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: currentAdminUsername })
     });
     
-    // Support GET or POST fallback per API signature
     const data = await res.json();
     if (res.ok && data.users) {
       systemUsersList = data.users;
       renderUsersTable(systemUsersList);
+      renderOrgChart(systemUsersList);
     } else {
       showFeedback('adminFeedback', data.error || 'Failed to load user registry.', 'danger');
     }
@@ -38,32 +52,73 @@ async function loadUsers() {
   }
 }
 
-// Render Users Table
+// Render Org Chart Preview
+function renderOrgChart(users) {
+  const container = document.getElementById('orgChartContainer');
+  if (!container) return;
+
+  if (!users || users.length === 0) {
+    container.innerHTML = `<span class="text-body-secondary">No account nodes available to plot.</span>`;
+    return;
+  }
+
+  container.innerHTML = users.map((u, index) => {
+    const isSelected = selectedTargetUser === u.Username;
+    const isDisable = u['Acc Status'] !== 'Active';
+    const borderClass = isSelected ? 'border-warning shadow' : (isDisable ? 'border-danger-subtle' : 'border-secondary-subtle');
+    
+    return `
+      <div class="d-flex align-items-center">
+        <div class="card bg-body-tertiary ${borderClass} text-center p-3 rounded-3" style="min-width: 170px; cursor: pointer;" onclick="selectUserForContacts('${u.Username}')">
+          <div class="mb-2">
+            <i class="bi ${u.Role === 'Admin' ? 'bi-shield-lock-fill text-warning' : 'bi-person-circle text-info'} fs-2"></i>
+          </div>
+          <h6 class="fw-bold mb-0 text-truncate" style="max-width: 150px;">${u['First Name']} ${u['Last Name']}</h6>
+          <small class="text-body-secondary d-block mb-1">@${u.Username}</small>
+          <div>
+            <span class="badge ${u.Role === 'Admin' ? 'text-bg-warning' : 'text-bg-secondary'} me-1">${u.Role}</span>
+            <span class="badge ${u['Acc Status'] === 'Active' ? 'text-bg-success' : 'text-bg-danger'}">${u['Acc Status']}</span>
+          </div>
+        </div>
+        ${index < users.length - 1 ? '<i class="bi bi-arrow-right text-body-tertiary fs-4 ms-3"></i>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
 function renderUsersTable(users) {
   const tbody = document.getElementById('usersTableBody');
+  if (!tbody) return;
+
   if (!users || users.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3">No users registered.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-body-secondary">No users found.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = users.map(u => `
-    <tr class="${selectedTargetUser === u.Username ? 'table-warning text-dark' : ''}">
-      <td class="fw-bold">${u.Username}</td>
-      <td>${u['First Name']} ${u['Last Name']}</td>
+    <tr 
+      class="${selectedTargetUser === u.Username ? 'table-warning text-dark' : ''}" 
+      style="cursor: pointer;" 
+      onclick="selectUserForContacts('${u.Username}')"
+    >
+      <th scope="row" class="ps-3 fw-bold">${u.Username}</th>
+      <td class="fw-medium">${u['First Name']} ${u['Last Name']}</td>
       <td><span class="badge ${u.Role === 'Admin' ? 'text-bg-warning' : 'text-bg-secondary'}">${u.Role}</span></td>
       <td><span class="badge ${u['Acc Status'] === 'Active' ? 'text-bg-success' : 'text-bg-danger'}">${u['Acc Status']}</span></td>
-      <td class="text-end">
-        <button class="btn btn-sm btn-outline-info me-1" onclick="selectUserForContacts('${u.Username}')" title="View Contacts">
-          <i class="bi bi-eye-fill"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-warning me-1" onclick="openPasswordModal('${u.Username}')" title="Change Password">
-          <i class="bi bi-key-fill"></i>
-        </button>
-        ${u['Acc Status'] === 'Active' ? `
-          <button class="btn btn-sm btn-outline-danger" onclick="disableUser('${u.Username}')" title="Disable User">
-            <i class="bi bi-slash-circle-fill"></i>
+      <td class="text-end pe-3">
+        <!-- Flexbox container with min-width keeps column alignment uniform across rows -->
+        <div class="d-inline-flex gap-1 justify-content-end" style="min-width: 72px;">
+          <!-- Change User Password -->
+          <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); openPasswordModal('${u.Username}')" title="Change Password">
+            <i class="bi bi-key"></i>
           </button>
-        ` : ''}
+          <!-- Disable User (Hidden if user is already Disabled) -->
+          ${u['Acc Status'] === 'Active' ? `
+            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); disableUser('${u.Username}')" title="Disable User">
+              <i class="bi bi-slash-circle"></i>
+            </button>
+          ` : ''}
+        </div>
       </td>
     </tr>
   `).join('');
@@ -80,11 +135,12 @@ function filterUsersTable() {
   renderUsersTable(filtered);
 }
 
-// 2. Select User & Fetch Their Contacts (Admin API)
+// 2. Select User & Fetch Their Contacts
 async function selectUserForContacts(username) {
   selectedTargetUser = username;
   document.getElementById('activeUserBadge').innerText = `@${username}`;
-  renderUsersTable(systemUsersList); // refresh highlighting
+  renderUsersTable(systemUsersList);
+  renderOrgChart(systemUsersList); // Re-render to highlight active node in chart
 
   try {
     const res = await fetch(`${API_URL}?action=getusercontacts`, {
@@ -102,7 +158,7 @@ async function selectUserForContacts(username) {
       renderContactsTable(targetContactsList);
     } else {
       document.getElementById('adminContactsTableBody').innerHTML = 
-        `<tr><td colspan="6" class="text-center py-3 text-danger">${data.error || 'Could not fetch contacts.'}</td></tr>`;
+        `<tr><td colspan="6" class="text-center py-4 text-danger">${data.error || 'Could not fetch contacts.'}</td></tr>`;
     }
   } catch (err) {
     showFeedback('adminFeedback', 'Error retrieving target user contacts.', 'danger');
@@ -112,24 +168,28 @@ async function selectUserForContacts(username) {
 // Render Contacts Directory Table
 function renderContactsTable(contacts) {
   const tbody = document.getElementById('adminContactsTableBody');
+  if (!tbody) return;
+
   if (!contacts || contacts.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3 text-body-secondary">No contacts found for this account.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-body-secondary">No contacts found for this account.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = contacts.map(c => `
     <tr>
-      <td class="fw-bold">${c.ID}</td>
-      <td>${c['First Name']}</td>
-      <td>${c['Last Name']}</td>
-      <td>${c['E-mail Address']}</td>
+      <th scope="row" class="ps-3 text-body-secondary">#${c.ID}</th>
+      <td class="fw-medium">${c['First Name']}</td>
+      <td class="fw-medium">${c['Last Name']}</td>
+      <td>
+        <a href="mailto:${c['E-mail Address']}" class="text-decoration-none">${c['E-mail Address']}</a>
+      </td>
       <td>${c['Phone Number']}</td>
-      <td class="text-end">
-        <button class="btn btn-sm btn-outline-warning me-1" onclick="openEditContactModal(${c.ID}, '${escapeQuotes(c['First Name'])}', '${escapeQuotes(c['Last Name'])}', '${escapeQuotes(c['E-mail Address'])}', '${escapeQuotes(c['Phone Number'])}')" title="Edit Entry">
-          <i class="bi bi-pencil-fill"></i>
+      <td class="text-end pe-3">
+        <button class="btn btn-sm btn-outline-warning me-1" onclick="openEditContactModal(${c.ID}, '${escapeQuotes(c['First Name'])}', '${escapeQuotes(c['Last Name'])}', '${escapeQuotes(c['E-mail Address'])}', '${escapeQuotes(c['Phone Number'])}')" title="Edit Contact">
+          <i class="bi bi-pencil"></i>
         </button>
-        <button class="btn btn-sm btn-outline-danger" onclick="deleteContact(${c.ID})" title="Delete Entry">
-          <i class="bi bi-trash-fill"></i>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteContact(${c.ID})" title="Delete Contact">
+          <i class="bi bi-trash"></i>
         </button>
       </td>
     </tr>
@@ -149,9 +209,12 @@ function filterContactsTable() {
   renderContactsTable(filtered);
 }
 
-// 3. Disable User (Admin API)
-async function disableUser(searchedUser) {
-  if (!confirm(`Are you sure you want to disable account "${searchedUser}"?`)) return;
+// Disable / Enable User Account Toggle
+async function disableUser(searchedUser, currentStatus) {
+  const isSuspending = currentStatus === 'Active';
+  const actionText = isSuspending ? 'suspend' : 'unsuspend';
+  
+  if (!confirm(`Are you sure you want to ${actionText} account "${searchedUser}"?`)) return;
 
   try {
     const res = await fetch(`${API_URL}?action=disable`, {
@@ -162,20 +225,20 @@ async function disableUser(searchedUser) {
         searchedUser: searchedUser 
       })
     });
-
+// Filter Contacts Directory
     const data = await res.json();
     if (res.ok) {
-      showFeedback('adminFeedback', `Account @${searchedUser} disabled successfully.`, 'success');
+      const updatedStatus = isSuspending ? 'suspended' : 'activated';
+      showFeedback('adminFeedback', `Account @${searchedUser} has been ${updatedStatus}.`, 'success');
       loadUsers();
     } else {
-      showFeedback('adminFeedback', data.error || 'Failed to disable user.', 'danger');
+      showFeedback('adminFeedback', data.error || `Failed to ${actionText} user.`, 'danger');
     }
   } catch (err) {
     showFeedback('adminFeedback', 'Server communication failure.', 'danger');
   }
 }
-
-// 4. Change Password (Admin API)
+// 4. Change User Password
 function openPasswordModal(username) {
   document.getElementById('passTargetUsername').value = username;
   document.getElementById('passTargetDisplay').value = `@${username}`;
@@ -202,18 +265,21 @@ async function handleChangePassword(e) {
 
     const data = await res.json();
     if (res.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+      const modalEl = document.getElementById('changePasswordModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalEl);
+      if (modalInstance) modalInstance.hide();
       showFeedback('adminFeedback', `Password updated for @${searchedUser}.`, 'success');
     } else {
-      document.getElementById('changePassFeedback').className = 'text-danger small fw-semibold';
-      document.getElementById('changePassFeedback').innerText = data.error || 'Failed to change password.';
+      const fb = document.getElementById('changePassFeedback');
+      fb.className = 'text-danger small fw-semibold';
+      fb.innerText = data.error || 'Failed to change password.';
     }
   } catch (err) {
     document.getElementById('changePassFeedback').innerText = 'Server error during password update.';
   }
 }
 
-// 5. Create Admin (Admin API)
+// 5. Create Admin Account
 async function handleCreateAdmin(e) {
   e.preventDefault();
   const payload = {
@@ -232,14 +298,17 @@ async function handleCreateAdmin(e) {
     });
 
     const data = await res.json();
-    if (res.status === 201) {
-      bootstrap.Modal.getInstance(document.getElementById('createAdminModal')).hide();
+    if (res.status === 201 || res.ok) {
+      const modalEl = document.getElementById('createAdminModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalEl);
+      if (modalInstance) modalInstance.hide();
       showFeedback('adminFeedback', 'New administrator created successfully!', 'success');
       document.getElementById('createAdminForm').reset();
       loadUsers();
     } else {
-      document.getElementById('createAdminFeedback').className = 'text-danger small fw-semibold';
-      document.getElementById('createAdminFeedback').innerText = data.error || 'Error creating admin.';
+      const fb = document.getElementById('createAdminFeedback');
+      fb.className = 'text-danger small fw-semibold';
+      fb.innerText = data.error || 'Error creating admin.';
     }
   } catch (err) {
     document.getElementById('createAdminFeedback').innerText = 'Connection failure.';
@@ -276,12 +345,15 @@ async function handleUpdateContact(e) {
 
     const data = await res.json();
     if (res.ok) {
-      bootstrap.Modal.getInstance(document.getElementById('editContactModal')).hide();
+      const modalEl = document.getElementById('editContactModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalEl);
+      if (modalInstance) modalInstance.hide();
       showFeedback('adminFeedback', 'Contact updated successfully.', 'success');
       selectUserForContacts(selectedTargetUser);
     } else {
-      document.getElementById('editContactFeedback').className = 'text-danger small fw-semibold';
-      document.getElementById('editContactFeedback').innerText = data.error || 'Update failed.';
+      const fb = document.getElementById('editContactFeedback');
+      fb.className = 'text-danger small fw-semibold';
+      fb.innerText = data.error || 'Update failed.';
     }
   } catch (err) {
     document.getElementById('editContactFeedback').innerText = 'Error saving changes.';
@@ -292,6 +364,16 @@ async function handleUpdateContact(e) {
 async function deleteContact(id) {
   if (!confirm(`Delete contact #${id}?`)) return;
 
+  // Use the target user's own ID, not the admin's — the backend's ownership
+  // check requires the contact's real owner, and systemUsersList already has it.
+  const targetUser = systemUsersList.find(u => u.Username === selectedTargetUser);
+  const targetUserId = targetUser ? targetUser.ID : null;
+
+  if (!targetUserId) {
+    showFeedback('adminFeedback', 'Could not determine contact owner. Re-select the account and try again.', 'danger');
+    return;
+  }
+
   try {
     const res = await fetch(API_URL, {
       method: 'DELETE',
@@ -299,7 +381,7 @@ async function deleteContact(id) {
       body: JSON.stringify({ 
         accstatus: 'Active', 
         id: id,
-        userid: sessionStorage.getItem('userId') || 0
+        userid: targetUserId
       })
     });
 

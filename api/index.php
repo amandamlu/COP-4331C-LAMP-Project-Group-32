@@ -307,26 +307,25 @@ if ($method === 'POST' && $action === 'getorg') {
             'error' => 'User not found'
         ]);
     }
-    //if admin
     $role = $user['Role'];$bossOutput = null;
     $role = $user['Role'];
-    if ($role === 'Admin') {
-        $stmt3 = $db->prepare("SELECT ID, `First Name`,`Last Name`,Username,Role,`Acc Status`,Boss FROM Users ORDER BY Role DESC, `Last Name`, `First Name`");
-        $stmt3->execute();
-        $results = $stmt3->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-    //If user, get boss 
-    $bossTemp2 = $user['Boss'];
-    $stmt = $db->prepare("SELECT ID, Boss FROM Users WHERE Boss = :boss LIMIT 1");
-    $stmt->execute([':boss' => $bossTemp2]);
-    $bossOutput = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    //If user, get other users with the same boss 
-    $bossTemp = $user['Boss'];
-    $stmt2 = $db->prepare("SELECT ID, `First Name`,`Last Name`,Username,Role,`Acc Status`,Boss FROM Users WHERE Boss = :boss ORDER BY Role DESC, `Last Name`, `First Name`");
-    $stmt2->execute([':boss' => $bossTemp]);
+    // if ($role === 'Admin') {
+    $stmt3 = $db->prepare("SELECT ID, `First Name`,`Last Name`,Username,Role,`Acc Status`,Boss FROM Users ORDER BY Role DESC, `Last Name`, `First Name`");
+    $stmt3->execute();
+    $results = $stmt3->fetchAll(PDO::FETCH_ASSOC);
+   // } else {
 
-    $results = $stmt2->fetchAll(PDO::FETCH_ASSOC);
-	}
+    // $bossTemp2 = $user['Boss'];
+    // $stmt = $db->prepare("SELECT ID, Boss FROM Users WHERE Boss = :boss LIMIT 1");
+    // $stmt->execute([':boss' => $bossTemp2]);
+    // $bossOutput = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // //If user, get other users with the same boss 
+    // $bossTemp = $user['Boss'];
+    // $stmt2 = $db->prepare("SELECT ID, `First Name`,`Last Name`,Username,Role,`Acc Status`,Boss FROM Users WHERE Boss = :boss ORDER BY Role DESC, `Last Name`, `First Name`");
+    // $stmt2->execute([':boss' => $bossTemp]);
+
+    // $results = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+	// }
 
     respond(200, [
         'message' => 'Organization chart, here!',
@@ -337,7 +336,7 @@ if ($method === 'POST' && $action === 'getorg') {
 }
 #===Admin===
 # Get users
-if ($method === 'GET' && $action === 'getusers') {
+if ($method === 'POST' && $action === 'getusers') {
     $username = clean($body['username']);
     $temp = $db->prepare('SELECT ID, Role FROM Users WHERE Username = :username LIMIT 1');
     $temp->execute([':username' => $username]); $user = $temp->fetch();
@@ -363,7 +362,7 @@ if ($method === 'GET' && $action === 'getusers') {
     }
 }
 # Get User's contacts
-if ($method === 'GET' && $action === 'getusercontacts') {
+if ($method === 'POST' && $action === 'getusercontacts') {
     $username = clean($body['username']);
     $searchedUsername=clean($body['searchedUsername']);
     $temp = $db->prepare('SELECT ID, Role FROM Users WHERE Username = :username LIMIT 1');
@@ -430,7 +429,7 @@ if ($method === 'PATCH' && $action === 'disable') {
     ]);  
     
 }
-# Change a user poassword
+# Change a user password
 if ($method === 'PATCH' && $action === 'changepass'){
     $username = clean($body['username']);
     $searchedUser = clean($body['searchedUser']);

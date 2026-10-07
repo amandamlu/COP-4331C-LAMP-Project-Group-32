@@ -146,7 +146,7 @@ function handleSearchInput(e) {
     // Split entry into first name and last name search terms
     const parts = query.split(" ");
     const searchFirst = parts[0] || "";
-    const searchLast = parts.slice(1).join(" ") || searchFirst;
+    const searchLast = parts.slice(1).join(" ") || "";
 
     searchContacts(searchFirst, searchLast);
   }, 300);
@@ -421,8 +421,8 @@ function loadOrgChart() {
             chartRows.push([
                 { 
                     v: user.Username, 
-                    f: `<div style="font-weight:bold; font-size: 14px; color: #1e2124;">${fullName}</div>
-                        <div style="color:#0056b3; font-size:11px; margin-top: 5px;">${user.Role}</div>` 
+                    f: `<div style="font-weight:bold; font-size: 14px; color: #ffffff;">${fullName}</div>
+                        <div style="color:#0dcaf0; font-size:11px; margin-top: 5px;">${user.Role}</div>` 
                 },
                 user.Boss || '', 
                 user['Acc Status']

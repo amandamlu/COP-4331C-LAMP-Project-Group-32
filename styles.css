@@ -1,12 +1,44 @@
-/* Custom utility overrides */
+/* Base Layout & Utilities */
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+}
 
 .fw-extrabold {
   font-weight: 800;
 }
 
-/* Enforce the visual layout height of the white/dark login card */
-.min-card-height {
-  min-height: 520px;
+.fs-7 {
+  font-size: 0.75rem;
+}
+
+/* Navbar Customizations */
+.navbar {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.navbar-brand {
+  letter-spacing: -0.3px;
+}
+
+/* Card & Table Styling */
+.card {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.table-responsive {
+  scrollbar-width: thin;
+}
+
+.table > tbody > tr {
+  transition: background-color 0.15s ease;
+}
+
+/* Form Controls & Inputs */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
 /* Custom styling for the switch toggle */
@@ -17,15 +49,21 @@
 }
 
 .role-toggle-switch:checked {
-  background-color: var(--bs-warning);
-  border-color: var(--bs-warning);
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
 }
 
-/* Smooth transitions for interactive elements */
-.btn-secondary {
-  transition: background-color 0.2s ease, transform 0.1s ease;
+/* Google Org Chart Customization */
+.google-visualization-orgchart-node {
+  border: 1px solid var(--bs-border-color) !important;
+  background: var(--bs-body-bg) !important;
+  color: var(--bs-body-color) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+  padding: 8px 12px !important;
 }
 
-.btn-secondary:active {
-  transform: scale(0.99);
+.google-visualization-orgchart-nodesel {
+  border-color: var(--bs-primary) !important;
+  background-color: rgba(13, 110, 253, 0.15) !important;
 }
