@@ -156,14 +156,14 @@ if ($method === 'POST' && $action === 'getpartial'){
             "SELECT `ID`, `First Name`, `Last Name`, `E-mail Address`, `Phone Number`
             FROM Contacts
             WHERE `User ID` = :userid
-            AND `First Name` = :firstName
-            AND `Last Name` = :lastName"
+            AND `First Name` LIKE :firstName
+            AND `Last Name` LIKE :lastName"
         );
 
         $stmt->execute([
             ':userid' => $userid,
-            ':firstName' => $firstName,
-            ':lastName' => $lastName
+            ':firstName' => '%' . $firstName . '%',
+            ':lastName' => '%' . $lastName . '%'
         ]);
 
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
