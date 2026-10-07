@@ -28,6 +28,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const addForm = document.getElementById("addEmployeeForm");
   if (addForm) addForm.addEventListener("submit", handleAddContact);
+
+  const editForm = document.getElementById("editContactForm");
+  if (editForm) editForm.addEventListener("submit", handleEditContact);
 });
 
 function readCookie() {
@@ -260,6 +263,63 @@ async function deleteContact(contactId) {
   }
 }
 
+function openEditModal(id, firstName, lastName, email, phone) {
+  document.getElementById("editContactId").value = id;
+  document.getElementById("editFirstName").value = firstName;
+  document.getElementById("editLastName").value = lastName;
+  document.getElementById("editEmail").value = email;
+  document.getElementById("editPhone").value = phone;
+
+  const feedback = document.getElementById("editModalFeedback");
+  if (feedback) feedback.textContent = "";
+
+  const modal = new bootstrap.Modal(document.getElementById("editContactModal"));
+  modal.show();
+}
+
+async function handleEditContact(e) {
+  e.preventDefault();
+
+  const idVal = document.getElementById("editContactId").value;
+  const firstNameVal = document.getElementById("editFirstName").value.trim();
+  const lastNameVal = document.getElementById("editLastName").value.trim();
+  const emailVal = document.getElementById("editEmail").value.trim();
+  const phoneVal = document.getElementById("editPhone").value.trim();
+  const feedbackEl = document.getElementById("editModalFeedback");
+
+  try {
+    const res = await fetch(`${urlBase}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: idVal,
+        accstatus: accStatus,
+        firstName: firstNameVal,
+        lastName: lastNameVal,
+        emailAddress: emailVal,
+        phoneNumber: phoneVal
+      })
+    });
+
+    if (res.ok) {
+      const modalEl = document.getElementById("editContactModal");
+      const modalInstance = bootstrap.Modal.getInstance(modalEl);
+      if (modalInstance) modalInstance.hide();
+
+      fetchContacts();
+      showFeedback("Contact updated successfully!", "success");
+    } else {
+      const data = await res.json();
+      if (feedbackEl) {
+        feedbackEl.className = "small fw-semibold text-danger";
+        feedbackEl.textContent = data.error || "Failed to update contact.";
+      }
+    }
+  } catch (err) {
+    console.error("handleEditContact Error:", err);
+  }
+}
+
 // ==========================================
 // UI Rendering & Helpers
 // ==========================================
@@ -296,11 +356,19 @@ function renderContactsTable(contacts) {
         </a>
       </td>
       <td>${escapeHTML(c['Phone Number'] || '')}</td>
+      <!-- Actions -->
       <td class="text-end pe-3">
+        <!-- Edit Button in Action Column -->
+        <button class="btn btn-sm btn-outline-primary me-1" 
+                onclick="openEditModal(${c.ID}, '${escapeHTML(c['First Name'] || '')}', '${escapeHTML(c['Last Name'] || '')}', '${escapeHTML(c['E-mail Address'] || '')}', '${escapeHTML(c['Phone Number'] || '')}')" 
+                title="Edit Contact">
+          <i class="bi bi-pencil"></i>
+        </button>
+
+        <!-- Delete Button -->
         <button class="btn btn-sm btn-outline-danger" onclick="deleteContact(${c.ID})" title="Delete Contact">
           <i class="bi bi-trash"></i>
-        </button>
-      </td>
+        </button>      </td>
     </tr>
   `).join('');
 }
