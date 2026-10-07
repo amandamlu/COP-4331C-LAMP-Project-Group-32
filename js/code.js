@@ -237,3 +237,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+async function requestPasswordReset(event) {
+  event.preventDefault();
+  
+  const enteredUser = document.getElementById("loginName").value.trim();
+  const statusText = document.getElementById("loginResult");
+
+  if (!enteredUser) {
+    statusText.className = "mt-1 small text-danger fw-semibold";
+    statusText.textContent = "Please enter your username above first to request a reset.";
+    return;
+  }
+
+  statusText.className = "mt-1 small text-info fw-semibold";
+  statusText.innerHTML = "<div class='spinner-border spinner-border-sm me-1'></div> Requesting code...";
+
+  try {
+    const apiResponse = await fetch(`${urlBase}?action=getpwdresetcode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: enteredUser })
+    });
+
+    const parsedJson = await apiResponse.json();
+
+    if (apiResponse.ok) {
+      statusText.className = "mt-1 small text-success fw-semibold";
+      console.log("(FOR DEMO ONLY!) Reset code generated: ", parsedJson.code); 
+      statusText.textContent = "Reset code generated! Redirecting...";
+      
+      setTimeout(() => { window.location.href = "reset.html"; }, 1500);
+    } else {
+      statusText.className = "mt-1 small text-danger fw-semibold";
+      statusText.textContent = parsedJson.message || "Failed to request code.";
+    }
+  } catch (e) {
+    statusText.className = "mt-1 small text-danger fw-semibold";
+    statusText.textContent = "Network error communicating with the server.";
+  }
+}

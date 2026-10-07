@@ -43,7 +43,7 @@ async function loadUsers() {
     if (res.ok && data.users) {
       systemUsersList = data.users;
       renderUsersTable(systemUsersList);
-      renderOrgChart(systemUsersList);
+      // renderOrgChart(systemUsersList);
     } else {
       showFeedback('adminFeedback', data.error || 'Failed to load user registry.', 'danger');
     }
@@ -52,40 +52,41 @@ async function loadUsers() {
   }
 }
 
-// Render Org Chart Preview
-function renderOrgChart(users) {
-  const container = document.getElementById('orgChartContainer');
-  if (!container) return;
 
-  if (!users || users.length === 0) {
-    container.innerHTML = `<span class="text-body-secondary">No account nodes available to plot.</span>`;
-    return;
-  }
-
-  container.innerHTML = users.map((u, index) => {
-    const isSelected = selectedTargetUser === u.Username;
-    const isDisable = u['Acc Status'] !== 'Active';
-    const borderClass = isSelected ? 'border-warning shadow' : (isDisable ? 'border-danger-subtle' : 'border-secondary-subtle');
-    
-    return `
-      <div class="d-flex align-items-center">
-        <div class="card bg-body-tertiary ${borderClass} text-center p-3 rounded-3" style="min-width: 170px; cursor: pointer;" onclick="selectUserForContacts('${u.Username}')">
-          <div class="mb-2">
-            <i class="bi ${u.Role === 'Admin' ? 'bi-shield-lock-fill text-warning' : 'bi-person-circle text-info'} fs-2"></i>
-          </div>
-          <h6 class="fw-bold mb-0 text-truncate" style="max-width: 150px;">${u['First Name']} ${u['Last Name']}</h6>
-          <small class="text-body-secondary d-block mb-1">@${u.Username}</small>
-          <div>
-            <span class="badge ${u.Role === 'Admin' ? 'text-bg-warning' : 'text-bg-secondary'} me-1">${u.Role}</span>
-            <span class="badge ${u['Acc Status'] === 'Active' ? 'text-bg-success' : 'text-bg-danger'}">${u['Acc Status']}</span>
-          </div>
-        </div>
-        ${index < users.length - 1 ? '<i class="bi bi-arrow-right text-body-tertiary fs-4 ms-3"></i>' : ''}
-      </div>
-    `;
-  }).join('');
+google.charts.load('current', {packages:["orgchart"]});
+function loadOrgChart() {
+    const adminUserId = sessionStorage.getItem('userId');
+    var data = new google.visualization.DataTable();
+    data.addColumn('string', 'Name');
+    data.addColumn('string', 'Manager');
+    data.addColumn('string', 'ToolTip');
+    fetch(`${API_URL}?action=getorg`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userid: adminUserId })
+    })
+    .then(response => response.json())
+    .then(apiData => {
+        const chartRows = [];
+        apiData.users.forEach(user => {
+            const fullName = `${user['First Name']} ${user['Last Name']}`;
+            chartRows.push([
+                { 
+                    v: user.Username, 
+                    f: `<div style="font-weight:bold; font-size: 14px; color: #ffffff;">${fullName}</div>
+                        <div style="color:#0dcaf0; font-size:11px; margin-top: 5px;">${user.Role}</div>` 
+                },
+                user.Boss || '', 
+                user['Acc Status']
+            ]);
+        });
+ 
+        data.addRows(chartRows);
+        var chart = new google.visualization.OrgChart(document.getElementById('org_chart_div'));
+        chart.draw(data, {allowHtml:true});
+    })
+    .catch(error => console.error('Error fetching org data:', error));
 }
-
 function renderUsersTable(users) {
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
@@ -108,6 +109,12 @@ function renderUsersTable(users) {
       <td class="text-end pe-3">
         <!-- Flexbox container with min-width keeps column alignment uniform across rows -->
         <div class="d-inline-flex gap-1 justify-content-end" style="min-width: 72px;">
+
+	 <!-- BOSS BUTTON -->
+	 <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); openAssignBossModal('${u.Username}')" title="Assign Superior">
+            <i class="bi bi-diagram-3"></i>
+          </button>
+
           <!-- Change User Password -->
           <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); openPasswordModal('${u.Username}')" title="Change Password">
             <i class="bi bi-key"></i>
@@ -140,7 +147,7 @@ async function selectUserForContacts(username) {
   selectedTargetUser = username;
   document.getElementById('activeUserBadge').innerText = `@${username}`;
   renderUsersTable(systemUsersList);
-  renderOrgChart(systemUsersList); // Re-render to highlight active node in chart
+  // renderOrgChart(systemUsersList); // Re-render to highlight active node in chart
 
   try {
     const res = await fetch(`${API_URL}?action=getusercontacts`, {
@@ -416,3 +423,60 @@ function doLogout() {
   sessionStorage.clear();
   window.location.href = 'index.html';
 }
+// the logic for the BOSS BUTTON
+function openAssignBossModal(employeeUsername) {
+  document.getElementById("assignEmployeeUsername").value = employeeUsername;
+  document.getElementById("assignEmployeeDisplay").textContent = employeeUsername;
+  document.getElementById("bossUsernameInput").value = "";
+  document.getElementById("assignBossFeedback").textContent = "";
+  
+  const bossModal = new bootstrap.Modal(document.getElementById("assignBossModal"));
+  bossModal.show();
+}
+
+document.getElementById("assignBossForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  
+  const employee = document.getElementById("assignEmployeeUsername").value;
+  const newBoss = document.getElementById("bossUsernameInput").value.trim();
+  const statusText = document.getElementById("assignBossFeedback");
+  
+  const getCookieVal = (name) => {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? match[2] : '';
+  };
+  const adminUser = getCookieVal("username");
+  
+  statusText.className = "small text-info fw-semibold mt-1";
+  statusText.innerHTML = "<div class='spinner-border spinner-border-sm me-1'></div>Assigning...";
+
+  try {
+    const apiResponse = await fetch("/api/index.php?action=assignboss", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: adminUser,      
+        searchedUser: employee, 
+        boss: newBoss            
+      })
+    });
+
+    const parsedJson = await apiResponse.json();
+
+    if (apiResponse.ok) {
+      statusText.className = "small text-success fw-semibold mt-1";
+      statusText.textContent = "Boss successfully assigned!";
+      
+      setTimeout(() => {
+        bootstrap.Modal.getInstance(document.getElementById("assignBossModal")).hide();
+        window.location.reload(); 
+      }, 1500);
+    } else {
+      statusText.className = "small text-danger fw-semibold mt-1";
+      statusText.textContent = parsedJson.error || "Failed to assign boss.";
+    }
+  } catch (e) {
+    statusText.className = "small text-danger fw-semibold mt-1";
+    statusText.textContent = "Network error connecting to the server.";
+  }
+});
